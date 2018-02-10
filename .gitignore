@@ -1,0 +1,7 @@
+.idea
+.idea/*
+.pyc
+*.pyc
+*.swp
+*.swo
+*.out
