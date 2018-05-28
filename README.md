@@ -1,2 +1,2 @@
 # metropolis_hastings
-A add-delete metropolis_hastings algorithm for graph sampling
+A add-delete metropolis-hastings algorithm for graph sampling
