@@ -4,6 +4,7 @@
 # Email:  xquanbin072095@gmail.com
 
 
+import time
 import numpy as np
 import networkx as nx
 from scipy import sparse
@@ -12,45 +13,16 @@ from scipy.special import gammaln
 
 
 def metropolis_hastings(data, delta, tau, rho, steps):
-    decider_list = []
-    with open('./input/decider.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            decider_list += sub_data
-
-    deciding_list = []
-    with open('./input/deciding.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            deciding_list += sub_data
-
-    add_int_list = []
-    with open('./input/add_int.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            add_int_list += sub_data
-
-    delete_int_list = []
-    with open('./input/delete_int.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            delete_int_list += sub_data
-
     # set a random seed
-    # np.random.seed(12345)
+    np.random.seed(12345)
 
     data = centralization(data)
     # set parameters
     (T, p) = data.shape
-    adj = np.zeros([p])
     beta = 2. / (p - 1)
+    phi = tau * rho * (np.ones([p, p]) - np.eye(p)) + tau * np.eye(p)
     n_edges = 0
     total_edges = p * (p - 1) / 2.
-    phi = tau * rho * (np.ones([p, p]) - np.eye(p)) + tau * np.eye(p)
 
     # calculate the initial log post probability
     current_log_post = -p * T / 2. * np.log(2 * np.pi) + p * (gammaln((delta + T) / 2.) - gammaln(delta / 2.))
@@ -62,96 +34,89 @@ def metropolis_hastings(data, delta, tau, rho, steps):
     # start MCMC
     G = nx.Graph()
     G.add_nodes_from(list(range(0, p)))
-    for k in range(0, steps):
-        # conn_comp_list = list(nx.connected_components(G))
+    for s in range(0, steps):
         cliques = list(nx.find_cliques(G))
 
         add = 0
         delete = 0
-        # decider = np.random.rand()
-        decider = decider_list[k]
+        decider = np.random.rand()
         if n_edges == 0 or (n_edges < total_edges and decider < 0.5):
             add = 1
-            node1, node2 = rand_edge_add(G, n_edges, total_edges,add_int_list[0])
-            add_int_list.remove(add_int_list[0])
-
-            print 'choose add node: {} and {}'.format(node1, node2)
+            node1, node2 = rand_edge_add(G, n_edges, total_edges)
+            print 'node chosen to add: {} and {}'.format(node1, node2)
         else:
             delete = 1
-            node1, node2 = rand_edge_delete(G, n_edges,delete_int_list[0])
-            delete_int_list.remove(delete_int_list[0])
+            node1, node2 = rand_edge_delete(G, n_edges)
+            print 'node chosen to delete: {} and {}'.format(node1, node2)
 
-            print 'choose delete node: {} and {}'.format(node1, node2)
+        clique_size_is_2 = 0
+        can_add = 0
+        can_delete = 0
 
-        cliqueSizeIs2 = 0
-        canAdd = 0
-        canDelete = 0
+        if add:
+            can_delete = 0
+            if nx.node_connected_component(G, node1) != nx.node_connected_component(G, node2):
+                can_add = 1
+                clique_size_is_2 = 1
 
-        if add == 1:
-            canDelete = 0
-            if (nx.node_connected_component(G, node1) != nx.node_connected_component(G, node2)):
-                canAdd = 1
-                cliqueSizeIs2 = 1
-
-            if cliqueSizeIs2 == 0:
+            if not clique_size_is_2:
                 # if two nodes belong to the same connected component, add edge between node1 and node2
                 # according to Theorem2 in the paper: Decomposable graphical Gaussian modeldetermination, GIUDICI
-                canAdd = add_logic(cliques, p, node1, node2)
+                can_add = add_logic(cliques, p, node1, node2)
 
                 # get the new clique and the size of it after add edge
-                new_clique, new_clique_size = getNewCliqueAftAdd(G, node1, node2)
+                new_clique, new_clique_size = get_new_clique_aft_add(G, node1, node2)
                 if new_clique_size == 2:
-                    cliqueSizeIs2 = 1
+                    clique_size_is_2 = 1
 
-        if delete == 1:
-            canAdd = 0
+        if delete:
+            can_add = 0
             # if an edge is only contained in exactly one clique, then we can delete it
             if delete_logic(cliques, node1, node2):
-                canDelete = 1
+                can_delete = 1
                 # get the  clique consist of the two nodes and the size of it before delete edge
-                new_clique, new_clique_size = getCliqueBfrDelete(cliques, node1, node2)
+                new_clique, new_clique_size = get_clique_bfr_delete(cliques, node1, node2)
                 if new_clique_size == 2:
-                    cliqueSizeIs2 = 1
+                    clique_size_is_2 = 1
 
         # calculate the change in log post probability after add or delete edge
-        if ((canAdd == 1 or canDelete == 1) and cliqueSizeIs2 == 1):
+        if (can_add or can_delete) and clique_size_is_2:
             post_ratio = post_update(data, T, phi, delta, beta, node1, node2)
-            if add == 1:
+            if add:
                 delta_log_post = post_ratio
                 post_ratio = np.exp(post_ratio) / (n_edges + 1.) * (total_edges - n_edges)
 
-            if delete == 1:
-                delta_log_post = -post_ratio
-                post_ratio = np.exp(-post_ratio) / (total_edges - n_edges + 1.) * n_edges
+            if delete:
+                delta_log_post = - post_ratio
+                post_ratio = np.exp(delta_log_post) / (total_edges - n_edges + 1.) * n_edges
 
             if n_edges == 0 or n_edges == total_edges:
                 post_ratio = post_ratio / 2.
 
-        elif(canAdd == 1 or canDelete == 1) and cliqueSizeIs2 != 1:
+        elif(can_add or can_delete) and not clique_size_is_2:
             post_ratio = post_update_all(new_clique, data, T, phi, delta, beta, node1, node2)
 
-            if add == 1:
+            if add:
                 delta_log_post = post_ratio
                 post_ratio = np.exp(post_ratio) / (n_edges + 1.) * (total_edges - n_edges)
 
-            if delete == 1:
-                delta_log_post = -post_ratio
-                post_ratio = np.exp(-post_ratio) / (total_edges - n_edges + 1.) * n_edges
+            if delete:
+                delta_log_post = - post_ratio
+                post_ratio = np.exp(delta_log_post) / (total_edges - n_edges + 1.) * n_edges
 
             if n_edges == 0 or n_edges == total_edges:
                 post_ratio = post_ratio / 2.
 
-        # deciding = np.random.rand()
-        deciding = deciding_list[k]
+        deciding = np.random.rand()
         # decide to add or delete an edge at last by comparing post_ratio with a random number
-        if (canAdd == 1 and post_ratio > deciding) or (canDelete == 1 and post_ratio > deciding):
-            if canAdd == 1:
+        if (can_add and post_ratio > deciding) or (can_delete and post_ratio > deciding):
+            if can_add:
                 G.add_edge(node1, node2)
                 n_edges = n_edges + 1
                 current_log_post = current_log_post + delta_log_post
                 print "success to add edge"
 
-            if canDelete == 1:
+            if can_delete:
                 G.remove_edge(node1, node2)
                 n_edges = n_edges - 1
                 current_log_post = current_log_post + delta_log_post
@@ -161,24 +126,22 @@ def metropolis_hastings(data, delta, tau, rho, steps):
             delta_log_post = 0
 
         print 'edges: {}'.format(G.edges), "n_edges:{}".format(n_edges)
-        print "{} iteration(s) finished!".format(k+1)
+        print "{} iteration(s) finished!".format(s+1)
 
     return G
 
 
-
 def centralization(data):
-    data = data - data.mean(axis=0)
-    return data
+    adj_data = data - data.mean(axis=0)
+    return adj_data
 
 
-def rand_edge_add(G, n_edges, total_edges,s):
+def rand_edge_add(G, n_edges, total_edges):
     p = G.number_of_nodes()
     unconnected_edges_num = 0
     node1 = 0
     if total_edges > n_edges:
-        # thr = np.random.randint(1, 2 * (total_edges - n_edges))
-        thr =int(s)
+        thr = np.random.randint(1, 2 * (total_edges - n_edges))
         while unconnected_edges_num + p - 1 - G.degree[node1] < thr:
             unconnected_edges_num += p - 1 - G.degree[node1]
             node1 += 1
@@ -200,11 +163,10 @@ def rand_edge_add(G, n_edges, total_edges,s):
     return node1, node2
 
 
-def rand_edge_delete(G, n_edges,s):
+def rand_edge_delete(G, n_edges):
     connected_edges_num = 0
     node1 = 0
-    # thr = np.random.randint(1, 2 * n_edges)
-    thr = int(s)
+    thr = np.random.randint(1, 2 * n_edges)
     while connected_edges_num + G.degree[node1] < thr:
         connected_edges_num += G.degree[node1]
         node1 += 1
@@ -216,8 +178,7 @@ def rand_edge_delete(G, n_edges,s):
 
 
 def add_logic(cliques, nodes_num, node1, node2):
-
-    canAdd = 0
+    can_add = 0
     R = []
     T = []
     index1 = []
@@ -232,26 +193,25 @@ def add_logic(cliques, nodes_num, node1, node2):
             index2.append(i)
 
     ns = np.ones([nodes_num, 1])
-    jtree = cliques_to_jtree(cliques, nodes_num, ns)
-    cliqueG = nx.from_numpy_matrix(jtree)
+    junction_tree = cliques_to_jtree(cliques, nodes_num, ns)
+    clique_G = nx.from_numpy_matrix(junction_tree)
 
     for i in range(0, len(index1)):
         for j in range(0, len(index2)):
             seperators = []
-            shortest_Path = nx.shortest_path(cliqueG, source=index1[i], target=index2[j])
-            for k in range(1, len(shortest_Path)):
-                seperators.append(set(cliques[shortest_Path[k-1]]) & set(cliques[shortest_Path[k]]))
+            shortest_path = nx.shortest_path(clique_G, source=index1[i], target=index2[j])
+            for k in range(1, len(shortest_path)):
+                seperators.append(set(cliques[shortest_path[k-1]]) & set(cliques[shortest_path[k]]))
 
             S = set(R[i]) & set(T[j])
             if len(S) != 0 and S in seperators:
-                canAdd = 1
+                can_add = 1
                 break
 
-        if canAdd:
+        if can_add:
             break
 
-    return canAdd
-
+    return can_add
 
 
 def cliques_to_jtree(cliques, nodes_num, ns):
@@ -263,7 +223,7 @@ def cliques_to_jtree(cliques, nodes_num, ns):
     :param cliques: /
     :param nodes_num: total number of nodes in a graph
     :param ns: ns[i] = number of values node i can take on
-    :return jtree: jtree[i,j] = 1 if cliques i and j are connected
+    :return junction_tree: junction_tree[i,j] = 1 if cliques i and j are connected
     """
     cliques_num = len(cliques)
     weight = np.zeros([cliques_num, 1])
@@ -276,22 +236,22 @@ def cliques_to_jtree(cliques, nodes_num, ns):
     primary_cost = sparse_clique.dot(sparse_clique.T).toarray()
     primary_cost = primary_cost - np.diag(np.diag(primary_cost))
 
-    W = np.tile(weight, (1, cliques_num))
-    secondary_cost = W + W.T
+    w = np.tile(weight, (1, cliques_num))
+    secondary_cost = w + w.T
     secondary_cost = secondary_cost - np.diag(np.diag(secondary_cost))
 
-    jtree = minimum_spanning_tree( -primary_cost, secondary_cost)   # Using -primary_cost gives maximum spanning tree
+    junction_tree = minimum_spanning_tree( -primary_cost, secondary_cost)   # Using -primary_cost gives maximum spanning tree
     # The root is arbitrary, but since the first pass is towards the root,
     # we would like this to correspond to going forward in time in a DBN.
     root = cliques_num
 
-    return jtree
+    return junction_tree
 
 
 def minimum_spanning_tree(primary_cost, secondary_cost):
     # primary_cost = primary_cost.toarray()
     n = len(primary_cost)#.shape[0]
-    cliquesAdj = np.zeros([n, n])
+    cliques_adj = np.zeros([n, n])
 
     closest_clique = np.zeros(n, dtype=int)   # closest__clique[i] = ii if clique i's closest clique is ii
     used_clique = np.zeros(n)  # used_clique[i] = 1 if clique i used else 0
@@ -304,35 +264,35 @@ def minimum_spanning_tree(primary_cost, secondary_cost):
     for i in range(1, n):
         ks = np.where(low_cost1 == low_cost1.min())[0]
         k = ks[np.argmin(low_cost2[ks])]
-        cliquesAdj[k, closest_clique[k]] = 1
-        cliquesAdj[closest_clique[k], k] = 1
+        cliques_adj[k, closest_clique[k]] = 1
+        cliques_adj[closest_clique[k], k] = 1
         low_cost1[k] = np.inf
         low_cost2[k] = np.inf
         used_clique[k] = 1
-        NU = np.where(used_clique == 0)[0]
-        for j in NU:
-            if primary_cost[k, j] < low_cost1[j]:
-                low_cost1[j] = primary_cost[k, j]
-                low_cost2[j] = secondary_cost[k, j]
-                closest_clique[j] = k
+        unused_clique = np.where(used_clique == 0)[0]
+        for u in unused_clique:
+            if primary_cost[k, u] < low_cost1[u]:
+                low_cost1[u] = primary_cost[k, u]
+                low_cost2[u] = secondary_cost[k, u]
+                closest_clique[u] = k
 
-    return cliquesAdj
+    return cliques_adj
 
 
 def delete_logic(cliques, node1, node2):
-    canDelete = 0
+    can_delete = 0
     count = 0
     for c in cliques:
         if node1 in c and node2 in c:
             count += 1
 
     if count == 1:
-        canDelete = 1
+        can_delete = 1
 
-    return canDelete
+    return can_delete
 
 
-def getNewCliqueAftAdd(G, node1, node2):
+def get_new_clique_aft_add(G, node1, node2):
     G.add_edge(node1, node2)
     cliques = nx.find_cliques(G)
     for c in cliques:
@@ -345,8 +305,7 @@ def getNewCliqueAftAdd(G, node1, node2):
     return new_cliques, new_cliques_size
 
 
-
-def getCliqueBfrDelete(cliques, node1, node2):
+def get_clique_bfr_delete(cliques, node1, node2):
     for c in cliques:
         if node1 in c and node2 in c:
             new_clique = c
@@ -428,9 +387,9 @@ def post_update_all(new_clique, data, data_rows_num, phi, delta, beta, node1, no
 
 if __name__ == "__main__":
 
-    # test data from zdata.txt
+    # load test data
     data_list = []
-    with open('./input/zdata.txt', 'r') as f:
+    with open('./input/data_111.txt', 'r') as f:
         lines = f.readlines()
         for line in lines:
             sub_data = [float(i) for i in line.strip().split()]
@@ -444,4 +403,7 @@ if __name__ == "__main__":
     steps = 1000
 
     # get the graph after steps iteration
+    start_time = time.time()
     G = metropolis_hastings(data, delta, tau, rho, steps)
+    end_time = time.time()
+    print "time cost: {}s".format(round(end_time - start_time), 2)
