@@ -5,7 +5,7 @@
 
 """
  Samples the HIW(delta, phi) distribution on a graph G on p nodes，
- for details, see carlos, "Simulation of Hyper-Inverse Wishart Distributions in Graph Models".
+ for details, see carlos, "Simulation of Hyper-Inverse Wishart Distributions in Graphical Models".
 """
 
 import time
@@ -26,6 +26,9 @@ def get_seperators(sorted_cliques):
 
 
 def hiw_sim(cliques, delta, phi, sample_num):
+    # set a random seed
+    np.random.seed(12345)
+
     p = len(phi)
     clique_num = len(cliques)
     seperators = get_seperators(cliques)
@@ -56,8 +59,8 @@ def hiw_sim(cliques, delta, phi, sample_num):
             sigma_n[np.ix_(s_id, R_i)] = sigma_n[np.ix_(R_i, s_id)].T
 
             sigma_n[np.ix_(R_i, R_i)] = sigmaRS_i + np.dot(np.dot(sigma_n[np.ix_(R_i, s_id)],
-                                                                    np.linalg.inv(sigma_n[np.ix_(s_id, s_id)])),
-                                                             sigma_n[np.ix_(s_id, R_i)])
+                                                                  np.linalg.inv(sigma_n[np.ix_(s_id, s_id)])),
+                                                           sigma_n[np.ix_(s_id, R_i)])
 
         # completion operation for sampled variance matrix
         H = c1
@@ -69,6 +72,7 @@ def hiw_sim(cliques, delta, phi, sample_num):
             sigma_n[np.ix_(R_i, A_i)] = np.dot(np.dot(sigma_n[np.ix_(R_i, s_id)],
                                                       np.linalg.inv(sigma_n[np.ix_(s_id, s_id)])),
                                                sigma_n[np.ix_(s_id, A_i)])
+            sigma_n[np.ix_(A_i, R_i)] = sigma_n[np.ix_(R_i, A_i)].T
             H = list(set(c_id) | set(H))
 
         sigma[:, :, n] = sigma_n
@@ -76,7 +80,7 @@ def hiw_sim(cliques, delta, phi, sample_num):
         # computing the corresponding sampled precision matrix
         caux = np.zeros([p, p, clique_num])
         saux = np.zeros([p, p, clique_num])
-        caux[np.ix_(c1, c1, [1])] = np.reshape(np.linalg.inv(sigma_n[np.ix_(c1, c1)]), (len(c1), len(c1), 1))
+        caux[np.ix_(c1, c1, [0])] = np.reshape(np.linalg.inv(sigma_n[np.ix_(c1, c1)]), (len(c1), len(c1), 1))
         for i in range(1, clique_num):
             c_id = cliques[i]
             s_id = seperators[i]
@@ -91,6 +95,7 @@ def hiw_sim(cliques, delta, phi, sample_num):
 
 
 if __name__ == "__main__":
+
     # load test data
     data_list = []
     with open('./input/data_15.txt', 'r') as f:
@@ -119,3 +124,8 @@ if __name__ == "__main__":
     test_sigma, test_omega = hiw_sim(cliques, post_delta, post_phi, 1000)
     end_time = time.time()
     print "time cost: {}s".format(round(end_time - start_time), 2)
+
+    mean_sigma = np.mean(test_sigma, 2)
+    print mean_sigma
+    mean_omega = np.mean(test_omega, 2)
+    print mean_omega

@@ -11,7 +11,6 @@ from scipy import sparse
 from scipy.special import gammaln
 
 
-
 def metropolis_hastings(data, delta, tau, rho, steps):
     # set a random seed
     np.random.seed(12345)
@@ -240,7 +239,7 @@ def cliques_to_jtree(cliques, nodes_num, ns):
     secondary_cost = w + w.T
     secondary_cost = secondary_cost - np.diag(np.diag(secondary_cost))
 
-    junction_tree = minimum_spanning_tree( -primary_cost, secondary_cost)   # Using -primary_cost gives maximum spanning tree
+    junction_tree = minimum_spanning_tree(-primary_cost, secondary_cost)   # Using -primary_cost gives maximum spanning tree
     # The root is arbitrary, but since the first pass is towards the root,
     # we would like this to correspond to going forward in time in a DBN.
     root = cliques_num
