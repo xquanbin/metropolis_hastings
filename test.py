@@ -383,13 +383,47 @@ def post_update_all(new_clique, data, data_rows_num, phi, delta, beta, node1, no
     return post_ratio
 
 
+def get_perfect_ordering_of_cliques(G, cliques):
+    p = len(G.node)
+
+    # At first, find a perfect elimination ordering of vertices using maximum cardinality search algorithm
+    card = np.zeros(p)
+    sorted_nodes = []
+    unlabeled_nodes = range(0, p)
+    while len(unlabeled_nodes) > 0:
+        temp = np.where(card == card[unlabeled_nodes].max())[0]
+        select_node = list(set(temp) - set(sorted_nodes))
+        select_node = select_node[0]
+
+        neighbors = G[select_node].keys()
+        if neighbors:
+            for nb in neighbors:
+                card[nb] += 1
+
+        sorted_nodes.append(select_node)
+        unlabeled_nodes = list(set(range(0, p)) - set(sorted_nodes))
+
+    # For decomposable graphs, the ordering of vertices established defines an ordering of cliques,
+    # where the cliques are ordered by the highest numbered vertex contained in each. (jones etc, 2005)
+    clique_num = len(cliques)
+    scores = np.zeros(clique_num)   # scores[i] reports the cliques[i]'s rank score
+    for ci in range(0, clique_num):
+        i_score_list = [sorted_nodes.index(nd) for nd in cliques[ci]]
+        scores[ci] = np.max(i_score_list)
+
+    perfect_ordering = np.argsort(scores)   # the No.(i+1) cliques in a perfect ordering is perfect_ordering[i]
+    sorted_cliques = []
+    for i in range(0, clique_num):
+        sorted_cliques.append(cliques[perfect_ordering[i]])
+
+    return sorted_cliques
 
 
 if __name__ == "__main__":
 
     # load test data
     data_list = []
-    with open('./input/data_111.txt', 'r') as f:
+    with open('./input/data_15.txt', 'r') as f:
         lines = f.readlines()
         for line in lines:
             sub_data = [float(i) for i in line.strip().split()]
