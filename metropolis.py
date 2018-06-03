@@ -42,11 +42,11 @@ def metropolis_hastings(data, delta, tau, rho, steps):
         if n_edges == 0 or (n_edges < total_edges and decider < 0.5):
             add = 1
             node1, node2 = rand_edge_add(G, n_edges, total_edges)
-            print 'node chosen to add: {} and {}'.format(node1, node2)
+            # print 'node chosen to add: {} and {}'.format(node1, node2)
         else:
             delete = 1
             node1, node2 = rand_edge_delete(G, n_edges)
-            print 'node chosen to delete: {} and {}'.format(node1, node2)
+            # print 'node chosen to delete: {} and {}'.format(node1, node2)
 
         clique_size_is_2 = 0
         can_add = 0
@@ -97,7 +97,7 @@ def metropolis_hastings(data, delta, tau, rho, steps):
 
             if add:
                 delta_log_post = post_ratio
-                post_ratio = np.exp(post_ratio) / (n_edges + 1.) * (total_edges - n_edges)
+                post_ratio = np.exp(delta_log_post) / (n_edges + 1.) * (total_edges - n_edges)
 
             if delete:
                 delta_log_post = - post_ratio
@@ -113,19 +113,19 @@ def metropolis_hastings(data, delta, tau, rho, steps):
                 G.add_edge(node1, node2)
                 n_edges = n_edges + 1
                 current_log_post = current_log_post + delta_log_post
-                print "success to add edge"
+                # print "success to add edge"
 
             if can_delete:
                 G.remove_edge(node1, node2)
                 n_edges = n_edges - 1
                 current_log_post = current_log_post + delta_log_post
-                print "success to delete edge"
+                # print "success to delete edge"
 
         else:
             delta_log_post = 0
 
-        print 'edges: {}'.format(G.edges), "n_edges:{}".format(n_edges)
-        print "{} iteration(s) finished!".format(s+1)
+        # print 'edges: {}'.format(G.edges), "n_edges:{}".format(n_edges)
+        # print "{} iteration(s) finished!".format(s+1)
 
     return G
 
