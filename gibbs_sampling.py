@@ -3,7 +3,10 @@
 # Date:  18-06-01
 # Email:  xquanbin072095@gmail.com
 
+
+import os
 import time
+import pickle
 import numpy as np
 import networkx as nx
 import metropolis as mt
@@ -139,7 +142,7 @@ if __name__ == "__main__":
     # initial output array
     state_samples = np.zeros([itr, T])
     sigma_samples = np.zeros([itr, K, p, p])
-    G_samples = np.zeros([itr, K])
+    G_samples = np.zeros([itr, K]).tolist()
     beta_samples = np.zeros([itr, K, n])
     tran_matrix_samples = np.zeros([itr, K, K])
 
@@ -148,9 +151,10 @@ if __name__ == "__main__":
     for k in range(0, K):
         beta_samples[0][k] = multivariate_normal.rvs(beta_prior_mu, beta_prior_sigma)
         sigma_samples[0][k] = np.eye(p)
-        G_samples[0][k] = nx.Graph().add_nodes_from(range(0, p))
+        graph_k = nx.Graph()
+        graph_k.add_nodes_from(range(0, p))
+        G_samples[0][k] = graph_k
 
-    print np.sum(state_sampling(2, y, x, beta_samples[0], sigma_samples[0], tran_matrix_samples[0], initial_state_prob))
     # start gibbs sampling
     t1 = time.time()
     for i in range(1, itr):
@@ -172,16 +176,17 @@ if __name__ == "__main__":
             for t in range(0, len(t_k)):
                 residual[t] = y[t_k[t]] - np.dot(x[t_k[t]].T, beta_samples[i - 1][k])
 
-            G_k = mt.metropolis_hastings(residual, delta, tau, rho, mh_steps)
-            print "    graph sampling under state {} finished!".format(k)
-
-            cliques_k = list(nx.find_cliques(G_k))
-            sorted_cliques_k = mt.get_perfect_ordering_of_cliques(G_k, cliques_k)
+            cliques_k = list(nx.find_cliques(G_samples[i-1][k]))
+            sorted_cliques_k = mt.get_perfect_ordering_of_cliques(G_samples[i-1][k], cliques_k)
             post_delta = delta + len(t_k)
             post_phi = tau * rho * (np.ones([p, p]) - np.eye(p)) + tau * np.eye(p) + np.dot(residual.T, residual)
             sigma_k, omega_k = hiw.hiw_sim(sorted_cliques_k, post_delta, post_phi, hiw_sample_num)
             sigma_samples[i][k] = sigma_k
             print "    sigma sampling under state {} finished!".format(k)
+
+            G_k = mt.metropolis_hastings(residual, delta, tau, rho, mh_steps)
+            G_samples[i][k] = G_k
+            print "    graph sampling under state {} finished!".format(k)
 
             beta_samples[i][k] = beta_sampling(y, x, t_k, beta_prior_mu, beta_prior_sigma, sigma_samples[i][k])
             print "    beta sampling under state {} finished!".format(k)
@@ -189,3 +194,13 @@ if __name__ == "__main__":
         tran_matrix_samples[i] = tran_matrix_sampling(dir_prior_delta, state_samples[i])
         print "    transition matrix sampling finished!"
         print "{}th gibbs sampling finished, time cost: {}s".format(i, round(time.time() - t2, 2))
+
+    # save the samples array to txt
+    OUTPUT_PATH = './output'
+    if not os.path.exists(OUTPUT_PATH):
+        os.mkdir(OUTPUT_PATH)
+
+    output_dict = {'state_samples': state_samples, 'sigma_samples': sigma_samples, 'graph_samples': G_samples,
+                   'beta_samples': beta_samples, 'transition_matrix_samples': tran_matrix_samples}
+    with open(OUTPUT_PATH + '/samples.txt', 'w') as f:
+        pickle.dump(output_dict, f)
