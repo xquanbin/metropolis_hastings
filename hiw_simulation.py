@@ -101,13 +101,7 @@ def hiw_sim(cliques, delta, phi, sample_num):
 if __name__ == "__main__":
 
     # load test data
-    data_list = []
-    with open('./input/data_15.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            data_list.append(sub_data)
-    data = np.array(data_list)
+    data = np.loadtxt('./input/data_15.txt')
     (T, p) = data.shape
 
     # a perfect ordering of cliques
@@ -127,7 +121,7 @@ if __name__ == "__main__":
     post_phi = phi + np.dot(data.T, data)
     test_sigma, test_omega = hiw_sim(cliques, post_delta, post_phi, 1000)
     end_time = time.time()
-    print "time cost: {}s".format(round(end_time - start_time), 2)
+    print "time cost: {}s".format(round(end_time - start_time, 2))
 
     mean_sigma = np.mean(test_sigma, axis=0)
     print mean_sigma

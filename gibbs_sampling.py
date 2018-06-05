@@ -100,22 +100,11 @@ def tran_matrix_sampling(dir_prior_delta, state_samples):
 if __name__ == "__main__":
 
     # load data
-    data_list = []
-    with open('./input/data_111.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            data_list.append(sub_data)
-    y = np.array(data_list)
+    RETURN_PATH = './intermediate/daily_return'
+    FACTORS_PATH = './intermediate/factors'
+    y = np.loadtxt(RETURN_PATH + '/bank.txt')
+    thr_factors = np.loadtxt(FACTORS_PATH + '/thr_factors.txt')
     (T, p) = y.shape
-
-    thr_factors_list = []
-    with open('./input/thr_factors.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            thr_factors_list.append(sub_data)
-    thr_factors = np.array(thr_factors_list)
     factor_num = thr_factors.shape[1]
 
     n = p * factor_num
@@ -169,6 +158,7 @@ if __name__ == "__main__":
         print "==> {}th gibbs sampling starts:".format(i)
 
         state_samples[i] = state_sampling(K, y, x, beta_samples[i - 1], sigma_samples[i - 1], tran_matrix_samples[i - 1], initial_state_prob)
+        # print np.sum(state_samples[i])
         print "    state sampling finished!"
 
         for k in range(0, K):
@@ -198,6 +188,4 @@ if __name__ == "__main__":
 
         tran_matrix_samples[i] = tran_matrix_sampling(dir_prior_delta, state_samples[i])
         print "    transition matrix sampling finished!"
-        print "{}th gibbs sampling finished, time cost: {}s".format(i, round(time.time() - t2), 2)
-
-
+        print "{}th gibbs sampling finished, time cost: {}s".format(i, round(time.time() - t2, 2))

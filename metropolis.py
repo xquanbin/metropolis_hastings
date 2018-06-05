@@ -421,13 +421,9 @@ def get_perfect_ordering_of_cliques(G, cliques):
 if __name__ == "__main__":
 
     # load test data
-    data_list = []
-    with open('./input/data_15.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            sub_data = [float(i) for i in line.strip().split()]
-            data_list.append(sub_data)
-    data = np.array(data_list)
+    RETURN_PATH = './intermediate/daily_return'
+    data = np.loadtxt(RETURN_PATH + '/bank.txt')
+    # data = np.loadtxt('./input/data_15.txt')
 
     # set params for metropolis hastings algorithm
     delta = 3
@@ -439,4 +435,4 @@ if __name__ == "__main__":
     start_time = time.time()
     G = metropolis_hastings(data, delta, tau, rho, steps)
     end_time = time.time()
-    print "time cost: {}s".format(round(end_time - start_time), 2)
+    print "time cost: {}s".format(round(end_time - start_time, 2))
