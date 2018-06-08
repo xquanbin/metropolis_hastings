@@ -73,6 +73,7 @@ if __name__ == "__main__":
     A_shares = stk_index[stk_index.mkt_type == 5]
     std_trading_date = A_shares.drop(['mkt_type', "daily_return", 'company_num'], axis=1)
     std_trading_date = std_trading_date[std_trading_date.trading_date >= start_date].sort_values(by='trading_date')
+    np.savetxt(MIDDLE_PATH + '/trading_date.txt', np.array(std_trading_date), fmt='%s')
 
     # merge all trading data
     data = pd.merge(std_trading_date, matched_hs300, how='left', on='trading_date').set_index(['trading_date', 'symbol'])

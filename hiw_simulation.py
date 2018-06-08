@@ -101,7 +101,7 @@ def hiw_sim(cliques, delta, phi, sample_num):
 if __name__ == "__main__":
 
     # load test data
-    data = np.loadtxt('./input/data_15.txt')
+    data = np.loadtxt('./input/test_data.txt')
     (T, p) = data.shape
 
     # a perfect ordering of cliques

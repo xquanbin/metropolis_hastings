@@ -423,7 +423,7 @@ if __name__ == "__main__":
     # load test data
     RETURN_PATH = './intermediate/daily_return'
     data = np.loadtxt(RETURN_PATH + '/bank.txt')
-    # data = np.loadtxt('./input/data_15.txt')
+    # data = np.loadtxt('./input/test_data.txt')
 
     # set params for metropolis hastings algorithm
     delta = 3
