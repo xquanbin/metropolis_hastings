@@ -12,6 +12,8 @@ import networkx as nx
 import metropolis as mt
 import hiw_simulation as hiw
 import matplotlib.pyplot as plt
+from seaborn import color_palette
+from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import multivariate_normal, dirichlet
 
 
@@ -25,6 +27,7 @@ if not os.path.exists(OUTPUT_PATH):
     os.mkdir(OUTPUT_PATH)
 if not os.path.exists(OUTPUT_FIGURE_PATH):
     os.mkdir(OUTPUT_FIGURE_PATH)
+
 
 def Gibbs_sampling(y, x, mh_params, beta_params, tran_params, itr_params, save_path=OUTPUT_PATH):
     # params
@@ -103,9 +106,9 @@ def Gibbs_sampling(y, x, mh_params, beta_params, tran_params, itr_params, save_p
         print "{}th gibbs sampling is finished, time cost: {}s".format(i, round(time.time() - t2, 2))
 
     # save the samples array to txt
-    output_dict = {'state_samples': state_samples[burn_in_sample_num:], 'sigma_samples': sigma_samples[burn_in_sample_num:],
-                   'graph_samples': G_samples[burn_in_sample_num:], 'beta_samples': beta_samples[burn_in_sample_num:],
-                   'transition_matrix_samples': tran_matrix_samples[burn_in_sample_num:]}
+    output_dict = {'state_samples': state_samples[burn_in_sample_num::2], 'sigma_samples': sigma_samples[burn_in_sample_num::2],
+                   'graph_samples': G_samples[burn_in_sample_num::2], 'beta_samples': beta_samples[burn_in_sample_num::2],
+                   'transition_matrix_samples': tran_matrix_samples[burn_in_sample_num::2]}
     with open(save_path + '/samples.txt', 'w') as f:
         pickle.dump(output_dict, f)
 
@@ -227,15 +230,15 @@ if __name__ == "__main__":
     beta_prior_mu = np.zeros(n)
     beta_prior_sigma = 1000 * np.eye(n)
     # initial state probability, state types and transition matrix
-    initial_state_prob = np.array([0.5, 0.5])
+    initial_state_prob = np.array([0.9, 0.1])
     K = len(initial_state_prob)
     dir_prior_delta = np.ones([K, K]) / 2.
     # iterations
     mh_steps = 1000
     hiw_sample_num = 1
-    burn_in_sample_num = 800
-    gibbs_sample_num = 1700
-    itr = burn_in_sample_num + gibbs_sample_num
+    burn_in_sample_num = 2000
+    gibbs_sample_num = 5000
+    itr = burn_in_sample_num + 2 * gibbs_sample_num     # storing every other of (2 * gibbs_sample_num) simulations
 
     # if samples have not been generated, run the Gibbs_sampling, else read samples from samples.txt .
     if not os.path.exists(OUTPUT_PATH + '/samples.txt'):
@@ -308,19 +311,20 @@ if __name__ == "__main__":
     fig3.savefig(OUTPUT_FIGURE_PATH + '/betas difference.png', dpi=fig3.dpi)
 
     # Draw weighted networks example
-    fig4, axes4 = plt.subplots(nrows=1, ncols=2, figsize=(10, 6))
+    fig4, axes4 = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
     labels = {0: 'Low Systemic Risk', 1: 'High Systemic Risk'}
+    nodes_name = {u: v for u, v in enumerate(stk_info[: ,2])}
     for k in range(0, K):
         G_example = G_samples[-1][k]
         pos = nx.spring_layout(G_example)
         importance_dict = nx.eigenvector_centrality(G_example)
         nx.draw_networkx_edges(G_example, pos, alpha=0.7, ax=axes4[k])
         nx.draw_networkx_nodes(G_example, pos, nodelist=list(importance_dict.keys()),
-                               node_size=600,
+                               node_size=800,
                                node_color=list(importance_dict.values()),
-                               cmap=plt.get_cmap('Reds'),
+                               cmap= LinearSegmentedColormap.from_list('a', color_palette("Reds", n_colors=12)[:8]),
                                ax=axes4[k])
-        nx.draw_networkx_labels(G_example, pos, ax=axes4[k], font_color='white', font_size=14)
+        nx.draw_networkx_labels(G_example, pos, labels=nodes_name, ax=axes4[k], font_color='black', font_size=10)
         # nx.draw_networkx(G_example,
         #                  node_size=600,
         #                  node_color=importance_dict.values(),

@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     # industry class for each stock in the hs300
     ind_class = pd.read_excel(INPUT_PATH + "/industry_class.xlsx", header=0, skiprows=0,
-                              names=['symbol', 'security_name', "class_name", 'list_date'])
+                              names=['symbol', 'security_name', "short_name", "class_name", 'list_date'])
     ind_class['class_name'] = ind_class['class_name'].apply(lambda x: x[-2: ])
     ind_class = ind_class[ind_class.list_date <= start_date]
 
