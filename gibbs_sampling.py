@@ -47,7 +47,7 @@ def Gibbs_sampling(y, x, mh_params, beta_params, tran_params, itr_params, save_p
     hiw_sample_num = itr_params['hiw']
     burn_in_sample_num = itr_params['burn_in']
     gibbs_sample_num = itr_params['gibbs']
-    itr = burn_in_sample_num + gibbs_sample_num
+    itr = burn_in_sample_num + 2 * gibbs_sample_num     # storing every other of (2 * gibbs_sample_num) simulations
 
     # initial output array
     state_samples = np.zeros([itr, T])
@@ -206,8 +206,8 @@ def tran_matrix_sampling(dir_prior_delta, state_samples):
 if __name__ == "__main__":
 
     # load data
-    y = np.loadtxt(RETURN_PATH + '/bank.txt')
-    stk_info = np.loadtxt(INFO_PATH + '/bank_info.txt', dtype="str")
+    y = np.loadtxt(RETURN_PATH + '/all.txt')
+    stk_info = np.loadtxt(INFO_PATH + '/all_info.txt', dtype="str", encoding='utf-8')
     thr_factors = np.loadtxt(FACTORS_PATH + '/thr_factors.txt')
     (T, p) = y.shape
     factor_num = thr_factors.shape[1]
@@ -301,30 +301,31 @@ if __name__ == "__main__":
     fig3, axes = plt.subplots(nrows=factor_num // 2 + 1, ncols=2, figsize=(10, 6))
     fig3.tight_layout(pad=3, h_pad=3, w_pad=1)
     axes[0][0].boxplot(jensen_alpha_diff, vert=True)
-    axes[0][0].set_title("Jensen's Alphas")
-    beta_title = {0: "Market Betas", 1: "SML Betas", 2: "HML Betas", 3: 'RMW Betas', 4: 'CMA Betas'}
+    axes[0][0].set_title("Alphas")
+    beta_title = {0: "Market Betas", 1: "SMB Betas", 2: "HML Betas", 3: 'RMW Betas', 4: 'CMA Betas'}
     for fn in range(0, factor_num):
         nn = range(fn, fn + n, factor_num)
-        beta_diff[fn, :, :] = abs(beta_samples[:, 0, nn]) - abs(beta_samples[:, -1, nn])
+        beta_diff[fn, :, :] = beta_samples[:, 0, nn] - beta_samples[:, -1, nn]
         axes[(fn + 1) // 2][(fn + 1) % 2].boxplot(beta_diff[fn, :, :], vert=True)
         axes[(fn + 1) // 2][(fn + 1) % 2].set_title(beta_title[fn])
     fig3.savefig(OUTPUT_FIGURE_PATH + '/betas difference.png', dpi=fig3.dpi)
 
     # Draw weighted networks example
-    fig4, axes4 = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+    fig4, axes4 = plt.subplots(nrows=2, ncols=1, figsize=(12, 30))
     labels = {0: 'Low Systemic Risk', 1: 'High Systemic Risk'}
-    nodes_name = {u: v for u, v in enumerate(stk_info[: ,2])}
+    nodes_name = {u: v for u, v in enumerate(stk_info[:, 2])}
     for k in range(0, K):
         G_example = G_samples[-1][k]
         pos = nx.spring_layout(G_example)
-        importance_dict = nx.eigenvector_centrality(G_example)
+        importance_dict = nx.eigenvector_centrality_numpy(G_example)
         nx.draw_networkx_edges(G_example, pos, alpha=0.7, ax=axes4[k])
         nx.draw_networkx_nodes(G_example, pos, nodelist=list(importance_dict.keys()),
-                               node_size=800,
+                               node_size=360,
                                node_color=list(importance_dict.values()),
-                               cmap= LinearSegmentedColormap.from_list('a', color_palette("Reds", n_colors=12)[:8]),
+                               cmap=LinearSegmentedColormap.from_list('a', color_palette("Reds", n_colors=12)[:8]),
                                ax=axes4[k])
-        nx.draw_networkx_labels(G_example, pos, labels=nodes_name, ax=axes4[k], font_color='black', font_size=10)
+        # nx.draw_networkx_labels(G_example, pos, labels=nodes_name, ax=axes4[k], font_color='black', font_size=10)
+        nx.draw_networkx_labels(G_example, pos, ax=axes4[k], font_color='black', font_size=10)
         # nx.draw_networkx(G_example,
         #                  node_size=600,
         #                  node_color=importance_dict.values(),
@@ -364,20 +365,21 @@ if __name__ == "__main__":
                 'Median Weighted Eigenvector Centrality': median_weighted_eig_cen}
     keys = cen_dict.keys()
 
-    fig5, axes5 = plt.subplots(nrows=len(keys), ncols=1, figsize=(10, 18))
+    fig5, axes5 = plt.subplots(nrows=len(keys), ncols=1, figsize=(12, 18))
     fig5.tight_layout(pad=3, h_pad=4, w_pad=3)
-    rank = list(range(1, p + 1))
+    rank_num = 20
+    rank = range(1, p + 1)[: rank_num]
     for m in range(0, len(keys)):
         for k in range(0, K):
             cen = cen_dict[keys[m]][k]
-            ranked_node = np.argsort(-cen)
+            ranked_node = np.argsort(-cen)[: rank_num]
             axes5[m].plot(cen[ranked_node], marker='^', label=labels[k])
             for i in rank:
                 axes5[m].text(i - 1 + 0.1, cen[ranked_node[i - 1]], str(ranked_node[i - 1]), va='bottom', ha='left',
                               wrap=True)
-        axes5[m].set_xticks(range(0, p))
+        axes5[m].set_xticks(range(0, p)[: rank_num])
         axes5[m].set_xticklabels(rank)
-        axes5[m].set_xlim([-1, p - 1])
+        axes5[m].set_xlim([-1, np.min([p, rank_num]) - 1])
         axes5[m].legend()
         axes5[m].set_xlabel('Ranking')
         axes5[m].set_title(keys[m])

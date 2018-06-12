@@ -57,6 +57,7 @@ if __name__ == "__main__":
     # daily trading data of stocks in hs300
     hs300 = read_several_xls(hs300_path, header=0, skiprows=2,
                              names=['symbol', 'trading_date', 'cls_price', 'mkt_value', 'daily_return'])
+    hs300['daily_return'] = hs300['daily_return'].apply(lambda x: np.log(1 + x))
 
     # industry class for each stock in the hs300
     ind_class = pd.read_excel(INPUT_PATH + "/industry_class.xlsx", header=0, skiprows=0,
@@ -123,7 +124,7 @@ if __name__ == "__main__":
                 sub_stock_info.index = range(0, len(sub_stock_info))
                 sub_stock_info['symbol'] = sub_stock_info.symbol.apply(lambda x: '0' * (6 - len(str(x))) + str(x))
                 sub_stock_info_array = np.array(sub_stock_info)
-                np.savetxt(SAVE_PATH + '/' + ind_class_name[v] + '_info.txt', sub_stock_info_array, fmt='%s')
+                np.savetxt(SAVE_PATH + '/' + ind_class_name[v] + '_info.txt', sub_stock_info_array, fmt='%s', encoding='utf-8')
 
         # replace nan in mkt_value by equal-weighted mean
         filtered_sub_mkt_value = filtered_sub_mkt_value.apply(lambda df: df.fillna(df.mean()))
