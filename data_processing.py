@@ -98,8 +98,11 @@ if __name__ == "__main__":
             sub_mkt_value = data[['mkt_value']]
         else:
             sub_mkt_value = data[data.class_name == v][['mkt_value']]
-        filtered_sub_mkt_value = filter_stocks(sub_mkt_value.unstack())
-        filtered_sub_mkt_value.columns = filtered_sub_mkt_value.columns.droplevel(0)
+
+        unstacked_sub_mkt_value = sub_mkt_value.unstack()
+        unstacked_sub_mkt_value.columns = unstacked_sub_mkt_value.columns.droplevel(0)
+        unstacked_sub_mkt_value = unstacked_sub_mkt_value[ind_class[ind_class.symbol.isin(unstacked_sub_mkt_value.columns)]['symbol']]
+        filtered_sub_mkt_value = filter_stocks(unstacked_sub_mkt_value)
 
         for u in save_file[1:]:
 
@@ -110,8 +113,10 @@ if __name__ == "__main__":
                 else:
                     sub_data = data[data.class_name == v][[u]]
 
-                filtered_sub_data = filter_stocks(sub_data.unstack())
-                filtered_sub_data.columns = filtered_sub_data.columns.droplevel(0)
+                unstacked_sub_data = sub_data.unstack()
+                unstacked_sub_data.columns = unstacked_sub_data.columns.droplevel(0)
+                unstacked_sub_data = unstacked_sub_data[ind_class[ind_class.symbol.isin(unstacked_sub_data.columns)]['symbol']]
+                filtered_sub_data = filter_stocks(unstacked_sub_data)
                 # replace nan by value-weighted mean
                 temp_sum = filtered_sub_data.T * filtered_sub_mkt_value.T
                 nan_add_T = temp_sum.sum() * 1. / filtered_sub_mkt_value.T.sum() * np.isnan(filtered_sub_data.T)
