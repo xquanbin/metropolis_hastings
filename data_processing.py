@@ -44,8 +44,8 @@ def filter_stocks(df):
 
 if __name__ == "__main__":
 
-    reload(sys)
-    sys.setdefaultencoding('utf8')
+    # reload(sys)
+    # sys.setdefaultencoding('utf8')
 
     INPUT_PATH = "./input"
     MIDDLE_PATH = "./intermediate"
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
         unstacked_sub_mkt_value = sub_mkt_value.unstack()
         unstacked_sub_mkt_value.columns = unstacked_sub_mkt_value.columns.droplevel(0)
-        unstacked_sub_mkt_value = unstacked_sub_mkt_value[ind_class[ind_class.symbol.isin(unstacked_sub_mkt_value.columns)]['symbol']]
+        # unstacked_sub_mkt_value = unstacked_sub_mkt_value[ind_class[ind_class.symbol.isin(unstacked_sub_mkt_value.columns)]['symbol']]
         filtered_sub_mkt_value = filter_stocks(unstacked_sub_mkt_value)
 
         for u in save_file[1:]:
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
                 unstacked_sub_data = sub_data.unstack()
                 unstacked_sub_data.columns = unstacked_sub_data.columns.droplevel(0)
-                unstacked_sub_data = unstacked_sub_data[ind_class[ind_class.symbol.isin(unstacked_sub_data.columns)]['symbol']]
+                # unstacked_sub_data = unstacked_sub_data[ind_class[ind_class.symbol.isin(unstacked_sub_data.columns)]['symbol']]
                 filtered_sub_data = filter_stocks(unstacked_sub_data)
                 # replace nan by value-weighted mean
                 temp_sum = filtered_sub_data.T * filtered_sub_mkt_value.T
@@ -125,8 +125,11 @@ if __name__ == "__main__":
                 filtered_sub_data_array = np.array(filtered_sub_data)
                 np.savetxt(SAVE_PATH + '/' + ind_class_name[v] + '.txt', filtered_sub_data_array)
             else:
-                sub_stock_info = ind_class[ind_class.symbol.isin(filtered_sub_data.columns)]
-                sub_stock_info.index = range(0, len(sub_stock_info))
+                sub_stock_info = pd.DataFrame()
+                for clm in filtered_sub_data.columns:
+                    sub_stock_info = pd.concat([sub_stock_info, ind_class[ind_class.symbol == clm]], ignore_index=True)
+                # sub_stock_info = ind_class[ind_class.symbol.isin(filtered_sub_data.columns)]
+                # sub_stock_info.index = range(0, len(sub_stock_info))
                 sub_stock_info['symbol'] = sub_stock_info.symbol.apply(lambda x: '0' * (6 - len(str(x))) + str(x))
                 sub_stock_info_array = np.array(sub_stock_info)
                 np.savetxt(SAVE_PATH + '/' + ind_class_name[v] + '_info.txt', sub_stock_info_array, fmt='%s', encoding='utf-8')
@@ -146,8 +149,12 @@ if __name__ == "__main__":
     five_factors = original_five_factors[original_five_factors.mkt_type == 'P9709'].drop('mkt_type', axis=1)
     thr_factors = thr_factors.sort_values(by='trading_date').set_index('trading_date')
     five_factors = five_factors.sort_values(by='trading_date').set_index('trading_date')
+    thr_factors.insert(0, 'constant', 1)
+    five_factors.insert(0, 'constant', 1)
+    capm = thr_factors[['constant','risk_premium']]
     thr_factors_array = np.array(thr_factors)
     five_factors_array = np.array(five_factors)
+    capm_array = np.array(capm)
 
     FACTORS_SAVE_PATH = MIDDLE_PATH + '/' + 'factors'
     if not os.path.exists(FACTORS_SAVE_PATH):
@@ -155,6 +162,7 @@ if __name__ == "__main__":
 
     np.savetxt(FACTORS_SAVE_PATH + '/' + 'thr_factors.txt', thr_factors_array)
     np.savetxt(FACTORS_SAVE_PATH + '/' + 'five_factors.txt', five_factors_array)
+    np.savetxt(FACTORS_SAVE_PATH + '/' + 'capm.txt', capm_array)
 
 
 

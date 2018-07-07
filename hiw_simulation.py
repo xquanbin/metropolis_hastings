@@ -100,30 +100,42 @@ def hiw_sim(cliques, delta, phi, sample_num):
 
 if __name__ == "__main__":
 
+    # a example
     # load test data
     data = np.loadtxt('./input/test_data.txt')
     (T, p) = data.shape
 
-    # a perfect ordering of cliques
-    cliques = [[0, 1, 8], [1, 3, 6, 8, 10], [1, 4, 6, 8, 10], [1, 3, 6, 8, 14], [4, 6, 10, 11], [2, 4, 8], [4, 5, 10],
-               [3, 9, 10], [8, 10, 12], [0, 7], [12, 13]]
-
     # assume sigma is subjected to HIW(delta, phi)
     delta = 3
-    tau = 0.0004
+    tau = 0.0001
     rho = 0
+    mh_steps = 1000
     beta = 2. / (p - 1)
     phi = tau * rho * (np.ones([p, p]) - np.eye(p)) + tau * np.eye(p)
 
-    # the post distribution of sigma is HIW(delta+T, phi+data.T * data), draw 1000 samples from it
+    # draw a graph using metropolis-hasting algorithm and get a perfect ordering of cliques
+    import metropolis as mt
+    import networkx as nx
+    G = mt.metropolis_hastings(data, delta, tau, rho, mh_steps)
+    cliques = list(nx.find_cliques(G))
+    sorted_cliques = mt.get_perfect_ordering_of_cliques(G, cliques)
+
+    """
+    # a perfect ordering of cliques
+    sorted_cliques = [[0, 1, 8], [1, 3, 6, 8, 10], [1, 4, 6, 8, 10], [1, 3, 6, 8, 14], [4, 6, 10, 11], 
+                      [2, 4, 8], [4, 5, 10], [3, 9, 10], [8, 10, 12], [0, 7], [12, 13]]
+    """
+
+    # the post distribution of sigma is HIW(delta + T, phi + data.T * data), draw 1000 samples from it
     start_time = time.time()
     post_delta = delta + T
     post_phi = phi + np.dot(data.T, data)
-    test_sigma, test_omega = hiw_sim(cliques, post_delta, post_phi, 1000)
+    test_sigma, test_omega = hiw_sim(sorted_cliques, post_delta, post_phi, 1000)
     end_time = time.time()
     print "time cost: {}s".format(round(end_time - start_time, 2))
 
     mean_sigma = np.mean(test_sigma, axis=0)
-    print mean_sigma
+    print "the mean of 1000 covariance samples:\n", mean_sigma   # the true covariance is np.cov(data.T)
     mean_omega = np.mean(test_omega, axis=0)
-    print mean_omega
+    print "\n"
+    print "the mean of 1000 precision matrix samples:\n", mean_omega
