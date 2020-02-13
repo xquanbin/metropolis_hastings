@@ -361,7 +361,7 @@ def post_update_all(new_clique, data, data_rows_num, phi, delta, beta, node1, no
 
     det_phi_DD = chol_diag_phi[-2]**2 * chol_diag_phi[-1]**2
     det_phi_ii = chol_diag_phi[-2]**2
-    det_phi_jj = chol_diag_phi[-2]**2 + chol_L_phi[-1, -2]**2
+    det_phi_jj = chol_diag_phi[-1]**2 + chol_L_phi[-1, -2]**2
 
     det_phi_Sy_DD = chol_diag_phi_Sy[-2]**2 * chol_diag_phi_Sy[-1]**2
     det_phi_Sy_ii = chol_diag_phi_Sy[-2]**2
